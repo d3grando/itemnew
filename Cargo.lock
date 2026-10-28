@@ -3,7 +3,7 @@
 version = 4
 
 [[package]]
-name = "horizon-itemspotlight"
+name = "horizon-itemnew"
 version = "0.1.0"
 dependencies = [
  "serde",

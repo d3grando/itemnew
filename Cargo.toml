@@ -1,15 +1,15 @@
 [package]
-name = "horizon-itemspotlight"
+name = "horizon-itemnew"
 version = "0.1.0"
 edition = "2024"
 rust-version = "1.95"
 license = "MIT"
-description = "Item Spotlight: a native Horizon mod that marks items newly added to your inventory"
+description = "Item New: a native Horizon mod that marks items newly added to your inventory"
 publish = false
 
 [lib]
-# This exact source is also injected as `crate::game::itemspotlight` by horizon-mixins.
-path = "mixins/itemspotlight/runtime.rs"
+# This exact source is also injected as `crate::game::itemnew` by horizon-mixins.
+path = "mixins/itemnew/runtime.rs"
 
 [dependencies]
 serde = { version = "1", features = ["derive"] }

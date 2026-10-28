@@ -1,17 +1,17 @@
-# Item Spotlight
+# Item New
 
 A **native** Horizon mod (horizon-mixins source mixin): items that just arrived
 in your inventory get a soft glow (or a frame, or a twinkling star) on their
 slot, in the hotbar and in every inventory screen, until you have seen them:
 point at the slot, or close the screen it showed in. It is all configurable, in
-game: Options > Mods > Item Spotlight > Settings.
+game: Options > Mods > Item New > Settings.
 
 Inspired by Item Highlighter (https://modrinth.com/mod/item-highlighter); not
 affiliated, no code from it.
 
 > **Native mods are not sandboxed.** Unlike `.hmod` (Wasm) mods, a native mod is
 > Rust source compiled into your own Horizon executable and runs with your user
-> rights. Read the source (it is small: `mixins/itemspotlight/`) before building.
+> rights. Read the source (it is small: `mixins/itemnew/`) before building.
 
 ## Behaviour
 
@@ -43,7 +43,7 @@ by the **clear rule** (default: either of the first two):
 - **pointing at it** with the mouse in a screen;
 - **closing a screen** it showed in (marks that screen never showed stay);
 - after a **timeout**, if one is set;
-- the settings page's *Clear all marks now* or `/itemspotlight clear`.
+- the settings page's *Clear all marks now* or `/itemnew clear`.
 
 Where marks show (each can be turned off):
 
@@ -69,16 +69,16 @@ The marks are kept in memory for the game session only.
 
 | Command | Effect |
 |---|---|
-| `/itemspotlight` or `/itemspotlight status` | Whether it is on, and how many slots are marked |
-| `/itemspotlight clear` | Take every mark away |
-| `/itemspotlight reload` | Re-read `config.json` |
+| `/itemnew` or `/itemnew status` | Whether it is on, and how many slots are marked |
+| `/itemnew clear` | Take every mark away |
+| `/itemnew reload` | Re-read `config.json` |
 
 The command runs in your own game (it is never sent to the server), so it works
 on any server.
 
 ## Settings
 
-**Options > Mods** lists Item Spotlight with its **Settings** button. The row's
+**Options > Mods** lists Item New with its **Settings** button. The row's
 own button turns the mod off (it then does nothing at all: no tracking, no
 marks, no command; the launcher's next build leaves it out) and on again. The
 settings page has one button per setting; a click moves it to its next value,
@@ -107,14 +107,14 @@ The settings page writes, and the mod reads, one JSON file in the mod's
 settings folder, beside the game's `options.txt`:
 
 ```
-horizon-mods/.horizon-mod-data/itemspotlight/config.json
+horizon-mods/.horizon-mod-data/itemnew/config.json
 ```
 
 Every key is optional; a missing file is the defaults. Unknown keys or values,
 or a `timeout` above 86400, turn the marks off (the page shows why, and the game
-prints `Item Spotlight disabled: ...` to stderr) until the file is fixed or
+prints `Item New disabled: ...` to stderr) until the file is fixed or
 reset. Edit it by hand for a timeout between the page's steps, then run
-`/itemspotlight reload`.
+`/itemnew reload`.
 
 ```json
 {
@@ -146,17 +146,17 @@ reset. Edit it by hand for a timeout between the page's steps, then run
 
 Horizon's native mods can use **hook points** (`game/native_hooks.rs`,
 `NATIVE_HOOKS_API`): functions kept stable from release to release. Item
-Spotlight uses them for everything they cover:
+Item New uses them for everything they cover:
 
 - `native_tick`: the window's inventory, once a tick;
 - `native_hud`: the marks on the HUD's hotbar, drawn with `native_fill`;
-- `native_command`: `/itemspotlight`, answered with `native_chat`;
+- `native_command`: `/itemnew`, answered with `native_chat`;
 - `native_mods`, `native_settings`, `native_settings_click`: the row in Options >
   Mods and the settings page; `native_setting`/`native_set_setting` for the file,
   `native_on`/`native_window` for the off switch and the window's own game.
 
 There is no hook point for the items a screen draws in its slots, so Item
-Spotlight hooks one game function directly and is **pinned** to one Horizon
+Item New hooks one game function directly and is **pinned** to one Horizon
 commit:
 
 | Hook | Kind | Why it is not a hook point |
@@ -168,7 +168,7 @@ Pinned: Horizon `142388e1c136e622652ec7505af15d8ad195e041`, horizon-mixins
 0.3.0 and Mason 0.2.0, so all three build into one game. `horizon-native.json`
 therefore names no `hooks` version. Planned together with TreeFall and Mason
 (`horizon-mixins plan`: 23 injections, 14 modules, no conflict): the three share
-only the non-cancellable hook points; `draw_item_model` is Item Spotlight's
+only the non-cancellable hook points; `draw_item_model` is Item New's
 alone.
 
 Single player: the mod works in the window's own game only (where the HUD and
@@ -176,7 +176,7 @@ screens are); single player's server thread passes through.
 
 ## Build and try
 
-Item Spotlight is a source bundle; the launcher compiles it into a custom game:
+Item New is a source bundle; the launcher compiles it into a custom game:
 
 ```sh
 horizon-launcher native-build <this folder> --version v0.2.97 --trust-native-code
@@ -188,15 +188,15 @@ folder holding several native mods.
 
 ## Development
 
-`mixins/itemspotlight/`:
+`mixins/itemnew/`:
 
 - `horizon-mixin.toml`: two support modules and seven HEAD hooks (above).
 - `runtime.rs`: all decisions (what counts as arrived, the clear rules, the
   timeout, the marks' shapes and colours, the hotbar layout, the command, the
   config and the settings page's buttons) as pure code, with unit tests. It is
   both this repository's Cargo library and the injected
-  `crate::game::itemspotlight` module.
-- `native.rs`: the adapter to the game (`crate::game::itemspotlight_native`).
+  `crate::game::itemnew` module.
+- `native.rs`: the adapter to the game (`crate::game::itemnew_native`).
 - `item.rs`, `tick.rs`, `hud.rs`, `command.rs`, `list.rs`, `settings.rs`,
   `click.rs`: the hook helpers.
 
@@ -204,10 +204,10 @@ folder holding several native mods.
 cargo test
 cargo fmt --check
 cargo clippy --all-targets -- -D warnings
-python tools/pack_hnmod.py   # dist/itemspotlight-<version>.hnmod
+python tools/pack_hnmod.py   # dist/itemnew-<version>.hnmod
 ```
 
 `native.rs` and the hook helpers compile only inside Horizon; check their
-formatting with `rustfmt --edition 2024 --check mixins/itemspotlight/*.rs`.
+formatting with `rustfmt --edition 2024 --check mixins/itemnew/*.rs`.
 
 MIT licensed.

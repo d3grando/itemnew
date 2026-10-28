@@ -1,9 +1,9 @@
-// Item Spotlight's adapter to the game (Horizon 142388e1c136e622652ec7505af15d8ad195e041,
-// see horizon-mixin.toml). Injected as `crate::game::itemspotlight_native`; feeds
+// Item New's adapter to the game (Horizon 142388e1c136e622652ec7505af15d8ad195e041,
+// see horizon-mixin.toml). Injected as `crate::game::itemnew_native`; feeds
 // the window's inventory to the game-independent tracker in
-// `crate::game::itemspotlight` (runtime.rs) and paints its marks, and keeps the
+// `crate::game::itemnew` (runtime.rs) and paints its marks, and keeps the
 // settings where the native hook points' helpers do.
-use super::itemspotlight::{
+use super::itemnew::{
     self as is, Colour, Command, Config, Effect, Fill, Inventory, Loaded, ScreenKind, Stack,
     Tracker,
 };
@@ -45,7 +45,7 @@ fn read_config(game: &Game<'_>) -> Loaded {
 /// Puts `loaded` in effect.
 fn apply(loaded: Loaded) {
     if let Err(error) = &loaded {
-        eprintln!("Item Spotlight disabled: {error}");
+        eprintln!("Item New disabled: {error}");
     }
     shared(|s| s.config = Some(loaded));
 }
@@ -59,7 +59,7 @@ fn loaded(game: &Game<'_>) -> Loaded {
         s.config
             .get_or_insert_with(|| {
                 if let Err(error) = &read {
-                    eprintln!("Item Spotlight disabled: {error}");
+                    eprintln!("Item New disabled: {error}");
                 }
                 read
             })
@@ -138,7 +138,7 @@ fn fill(game: &Game<'_>, batch: &mut HudBatch, fills: &[Fill]) {
 impl Game<'_> {
     /// `native_tick` (a hook point): compare the window's inventory with the
     /// last tick's and mark what arrived.
-    pub(super) fn itemspotlight_tick(&mut self) {
+    pub(super) fn itemnew_tick(&mut self) {
         if !self.native_window() {
             return;
         }
@@ -155,7 +155,7 @@ impl Game<'_> {
 
     /// `native_hud` (a hook point), after the hotbar's items: the marks on
     /// the hotbar and the off hand slot.
-    pub(super) fn itemspotlight_hud(&self, batch: &mut HudBatch) {
+    pub(super) fn itemnew_hud(&self, batch: &mut HudBatch) {
         if !on(self) || self.player.is_none() || self.spectator() {
             return;
         }
@@ -187,7 +187,7 @@ impl Game<'_> {
     /// `item_draw::Game::draw_item_model`'s HEAD: an item drawn in a screen
     /// at the place of a marked player slot gets its mark (under and over
     /// the item); true when it was drawn here. Pointing at it clears it.
-    pub(super) fn itemspotlight_draw_item(
+    pub(super) fn itemnew_draw_item(
         &self,
         batch: &mut HudBatch,
         stack: &ItemStack,
@@ -261,9 +261,9 @@ impl Game<'_> {
         true
     }
 
-    /// `native_command` (a hook point): `/itemspotlight [status|clear|reload]`,
+    /// `native_command` (a hook point): `/itemnew [status|clear|reload]`,
     /// run by the window itself (on any server); true when it was ours.
-    pub(super) fn itemspotlight_command(&mut self, command: &str) -> bool {
+    pub(super) fn itemnew_command(&mut self, command: &str) -> bool {
         if !on(self) {
             return false;
         }
@@ -299,7 +299,7 @@ impl Game<'_> {
     }
 
     /// `native_settings` (a hook point): the settings page's buttons.
-    pub(super) fn itemspotlight_settings(&self) -> Vec<String> {
+    pub(super) fn itemnew_settings(&self) -> Vec<String> {
         let marked = shared(|s| s.tracker.count());
         is::labels(&loaded(self), marked)
     }
@@ -307,7 +307,7 @@ impl Game<'_> {
     /// `native_settings_click` (a hook point): change the setting, write
     /// `config.json` and put it in effect at once (or read the file again,
     /// or take the marks away).
-    pub(super) fn itemspotlight_settings_click(&mut self, button: usize) {
+    pub(super) fn itemnew_settings_click(&mut self, button: usize) {
         match is::click(&loaded(self), button) {
             Some(Effect::Save(config)) => {
                 self.native_set_setting(is::ID, is::CONFIG_FILE, &config.to_json());

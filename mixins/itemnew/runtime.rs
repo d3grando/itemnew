@@ -1,9 +1,9 @@
-// Item Spotlight: items that just arrived in your inventory are marked on their
+// Item New: items that just arrived in your inventory are marked on their
 // slot until you have seen them.
 //
 // Original implementation for Horizon (a horizon-mixins native mod). This file is
 // both the standalone, unit-tested Cargo library and the injected
-// `crate::game::itemspotlight` module. It has no Horizon dependency: `native.rs`
+// `crate::game::itemnew` module. It has no Horizon dependency: `native.rs`
 // turns the running game's inventory into an [`Inventory`] each tick and paints
 // the [`Fill`]s this module asks for.
 
@@ -11,16 +11,16 @@ use serde::{Deserialize, Serialize};
 use std::collections::HashMap;
 
 /// The mod's id: its row in Options > Mods and its settings folder
-/// (`horizon-mods/.horizon-mod-data/itemspotlight/`).
-pub const ID: &str = "itemspotlight";
+/// (`horizon-mods/.horizon-mod-data/itemnew/`).
+pub const ID: &str = "itemnew";
 pub const VERSION: &str = "0.1.0";
-pub const NAME: &str = "Item Spotlight";
+pub const NAME: &str = "Item New";
 pub const DESCRIPTION: &str = "Marks items newly added to your inventory, in the hotbar and inventory screens, until you have seen them.";
 /// The configuration, in the mod's settings folder: what the settings page writes.
 pub const CONFIG_FILE: &str = "config.json";
 /// The chat command (without its slash).
-pub const COMMAND: &str = "itemspotlight";
-pub const USAGE: &str = "Usage: /itemspotlight [status|clear|reload]";
+pub const COMMAND: &str = "itemnew";
+pub const USAGE: &str = "Usage: /itemnew [status|clear|reload]";
 
 /// The player's 36 main slots (0..9 the hotbar), then the off hand.
 pub const MAIN_SLOTS: usize = 36;
@@ -78,7 +78,7 @@ pub enum Clear {
     HoverOrClose,
     Hover,
     Close,
-    /// Neither: only `timeout`, the Clear button or `/itemspotlight clear`.
+    /// Neither: only `timeout`, the Clear button or `/itemnew clear`.
     Never,
 }
 impl Clear {
@@ -523,7 +523,7 @@ pub enum Command {
     Clear,
     Reload,
 }
-/// `/itemspotlight ...`: None when the line is another command.
+/// `/itemnew ...`: None when the line is another command.
 pub fn parse_command(line: &str) -> Option<Result<Command, &'static str>> {
     let mut words = line.trim().trim_start_matches('/').split_whitespace();
     if !words.next()?.eq_ignore_ascii_case(COMMAND) {
@@ -537,7 +537,7 @@ pub fn parse_command(line: &str) -> Option<Result<Command, &'static str>> {
     };
     Some(Ok(command))
 }
-/// `/itemspotlight status`'s line.
+/// `/itemnew status`'s line.
 pub fn status(loaded: &Loaded, marked: usize) -> String {
     match loaded {
         Err(error) => format!("{NAME} is off: {CONFIG_FILE}: {error}"),
@@ -552,7 +552,7 @@ pub fn status(loaded: &Loaded, marked: usize) -> String {
 /// (the mod then marks nothing until it is fixed or reset).
 pub type Loaded = Result<Config, String>;
 
-/// A button of the settings page (Options > Mods > Item Spotlight > Settings).
+/// A button of the settings page (Options > Mods > Item New > Settings).
 #[derive(Clone, Copy, Debug, PartialEq, Eq)]
 pub enum Setting {
     /// The file is broken: its error. A click reads it again.
@@ -1277,26 +1277,20 @@ mod tests {
 
     #[test]
     fn commands() {
-        assert_eq!(parse_command("itemspotlight"), Some(Ok(Command::Status)));
+        assert_eq!(parse_command("itemnew"), Some(Ok(Command::Status)));
+        assert_eq!(parse_command("/itemnew status"), Some(Ok(Command::Status)));
+        assert_eq!(parse_command("ItemNew clear"), Some(Ok(Command::Clear)));
         assert_eq!(
-            parse_command("/itemspotlight status"),
-            Some(Ok(Command::Status))
-        );
-        assert_eq!(
-            parse_command("ItemSpotlight clear"),
-            Some(Ok(Command::Clear))
-        );
-        assert_eq!(
-            parse_command(" itemspotlight  reload "),
+            parse_command(" itemnew  reload "),
             Some(Ok(Command::Reload))
         );
-        assert_eq!(parse_command("itemspotlight what"), Some(Err(USAGE)));
-        assert_eq!(parse_command("itemspotlight clear now"), Some(Err(USAGE)));
-        assert_eq!(parse_command("itemspotlights"), None);
+        assert_eq!(parse_command("itemnew what"), Some(Err(USAGE)));
+        assert_eq!(parse_command("itemnew clear now"), Some(Err(USAGE)));
+        assert_eq!(parse_command("itemnews"), None);
         assert_eq!(parse_command("give @s dirt"), None);
         assert_eq!(parse_command(""), None);
         let on = Ok(Config::default());
-        assert_eq!(status(&on, 3), "Item Spotlight is on: 3 marked");
+        assert_eq!(status(&on, 3), "Item New is on: 3 marked");
         let off = Ok(Config {
             enabled: false,
             ..Config::default()

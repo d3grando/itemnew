@@ -1,5 +1,5 @@
 [mod]
-id = "itemspotlight"
+id = "itemnew"
 version = "0.1.0"
 # The default; no other bundle hooks draw_item_model, and on the shared hook
 # points (all non-cancellable) the order makes no difference.
@@ -15,13 +15,13 @@ horizon_revision = "142388e1c136e622652ec7505af15d8ad195e041"
 [[module]]
 id = "runtime"
 file = "crates/horizon-client/src/game.rs"
-name = "itemspotlight"
+name = "itemnew"
 source = "runtime.rs"
 
 [[module]]
 id = "native"
 file = "crates/horizon-client/src/game.rs"
-name = "itemspotlight_native"
+name = "itemnew_native"
 source = "native.rs"
 
 # Pinned: the marks in screens. Every screen draws a slot's item through
@@ -62,7 +62,7 @@ bindings = [
   { name = "batch", ty = "&mut horizon_client::hud::HudBatch", value = "&mut *batch" },
 ]
 
-# Hook point: `/itemspotlight`.
+# Hook point: `/itemnew`.
 [[injection]]
 id = "command"
 kind = "HEAD"
