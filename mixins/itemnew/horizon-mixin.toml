@@ -1,6 +1,6 @@
 [mod]
 id = "itemnew"
-version = "0.1.0"
+version = "0.1.1"
 # The default; no other bundle hooks draw_item_model, and on the shared hook
 # points (all non-cancellable) the order makes no difference.
 priority = 100
@@ -24,9 +24,11 @@ file = "crates/horizon-client/src/game.rs"
 name = "itemnew_native"
 source = "native.rs"
 
-# Pinned: the marks in screens. Every screen draws a slot's item through
-# draw_item_model (draw_slot_item and draw_item both end there); the mark goes
-# under the item and over it, so the hook draws the item itself in between.
+# Pinned: the marks in screens and on the HUD's hotbar. Every screen draws a
+# slot's item through draw_item_model (draw_slot_item and draw_item both end
+# there), and so does the hotbar; the mark goes under the item and over it, so
+# the hook draws the item itself in between, and the game draws the count over
+# both afterwards.
 [[injection]]
 id = "item"
 kind = "HEAD"
@@ -49,17 +51,6 @@ target = "horizon_client::game::native_hooks::Game<'_>::native_tick"
 helper = "tick.rs"
 bindings = [
   { name = "game", ty = "&mut crate::game::Game<'_>", value = "&mut *self" },
-]
-
-# Hook point: the marks on the HUD's hotbar.
-[[injection]]
-id = "hud"
-kind = "HEAD"
-target = "horizon_client::game::native_hooks::Game<'_>::native_hud"
-helper = "hud.rs"
-bindings = [
-  { name = "game", ty = "&mut crate::game::Game<'_>", value = "&mut *self" },
-  { name = "batch", ty = "&mut horizon_client::hud::HudBatch", value = "&mut *batch" },
 ]
 
 # Hook point: `/itemnew`.

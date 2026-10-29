@@ -56,9 +56,9 @@ Where marks show (each can be turned off):
   tables, anvils, grindstones and the other workstations, beacons, villagers and
   mounts.
 
-In a screen the glow sits under the item and its bright edge over it; on the
-HUD's hotbar, where the item is already drawn, only the edge shows, so the item
-is never tinted. Marks pulse gently (the star twinkles) unless the animation is
+The glow sits under the item and its bright edge over it, with the stack's
+count and durability bar drawn on top, so the item is never tinted and the
+count stays readable, in screens and on the HUD's hotbar alike. Marks pulse gently (the star twinkles) unless the animation is
 off. The colour is gold by default, or the colour of the item's name (white,
 yellow, aqua or pink, by rarity, as its tooltip shows it), or one of four
 fixed colours.
@@ -149,7 +149,6 @@ Horizon's native mods can use **hook points** (`game/native_hooks.rs`,
 Item New uses them for everything they cover:
 
 - `native_tick`: the window's inventory, once a tick;
-- `native_hud`: the marks on the HUD's hotbar, drawn with `native_fill`;
 - `native_command`: `/itemnew`, answered with `native_chat`;
 - `native_mods`, `native_settings`, `native_settings_click`: the row in Options >
   Mods and the settings page; `native_setting`/`native_set_setting` for the file,
@@ -161,7 +160,7 @@ commit:
 
 | Hook | Kind | Why it is not a hook point |
 |---|---|---|
-| `item_draw::Game::draw_item_model` | cancellable HEAD | The marks in screens. `native_hud` draws only the HUD, before any screen, so it cannot reach slots, and nothing tells a mod where a screen's slots are drawn. Every screen draws a slot's item through this one function (`draw_slot_item` and `draw_item` both end in it), with the item and its place, so the hook recognises a marked player slot by its place (`inventory_origin` + `slot_position`, the game's own layout) and its item. It draws the glow, then the item itself, then the edge or the star, and skips the game's draw (Break); any other item is left to the game (Continue). `draw_slot_item` itself cannot be hooked: its body has a macro, which horizon-mixins refuses. |
+| `item_draw::Game::draw_item_model` | cancellable HEAD | The marks in screens and on the HUD's hotbar. `native_hud` draws only the HUD, before any screen, so it cannot reach slots, and nothing tells a mod where a screen's slots are drawn; on the hotbar it comes after the items and their counts, so a mark drawn there covered the count's digits. Every screen draws a slot's item through this one function (`draw_slot_item` and `draw_item` both end in it), with the item and its place, so the hook recognises a marked player slot by its place (`inventory_origin` + `slot_position`, the game's own layout) and its item. The hotbar's items go through it too (`draw_item`): one is recognised by its place (the hotbar's layout) and by being that slot's own stack. It draws the glow, then the item itself, then the edge or the star, and skips the game's draw of the model (Break); the game then draws the count over it. Any other item is left to the game (Continue). `draw_slot_item` itself cannot be hooked: its body has a macro, which horizon-mixins refuses. |
 
 Pinned: Horizon `142388e1c136e622652ec7505af15d8ad195e041`, horizon-mixins
 `0d6b103c70633d8fd9443d8d0acd3aadaacedb06`, game 26.3, the same as TreeFall
@@ -190,14 +189,14 @@ folder holding several native mods.
 
 `mixins/itemnew/`:
 
-- `horizon-mixin.toml`: two support modules and seven HEAD hooks (above).
+- `horizon-mixin.toml`: two support modules and six HEAD hooks (above).
 - `runtime.rs`: all decisions (what counts as arrived, the clear rules, the
   timeout, the marks' shapes and colours, the hotbar layout, the command, the
   config and the settings page's buttons) as pure code, with unit tests. It is
   both this repository's Cargo library and the injected
   `crate::game::itemnew` module.
 - `native.rs`: the adapter to the game (`crate::game::itemnew_native`).
-- `item.rs`, `tick.rs`, `hud.rs`, `command.rs`, `list.rs`, `settings.rs`,
+- `item.rs`, `tick.rs`, `command.rs`, `list.rs`, `settings.rs`,
   `click.rs`: the hook helpers.
 
 ```sh

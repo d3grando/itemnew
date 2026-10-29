@@ -153,40 +153,10 @@ impl Game<'_> {
         shared(|s| s.tracker.observe(now, inventory, context, open, &config));
     }
 
-    /// `native_hud` (a hook point), after the hotbar's items: the marks on
-    /// the hotbar and the off hand slot.
-    pub(super) fn itemnew_hud(&self, batch: &mut HudBatch) {
-        if !on(self) || self.player.is_none() || self.spectator() {
-            return;
-        }
-        let marks = shared(|s| s.tracker.marks());
-        let hotbar = marks.iter().filter(|(i, _)| *i < 9 || *i == is::OFFHAND);
-        let hotbar: Vec<_> = hotbar.collect();
-        if hotbar.is_empty() {
-            return;
-        }
-        let config = config(self);
-        if !config.shows(ScreenKind::Hotbar) {
-            return;
-        }
-        let pulse = pulse(self, &config);
-        let right_handed = !self.settings.main_hand_left;
-        for (slot, item) in hotbar {
-            let Some(stack) = tracked(self, *slot).filter(|s| *s.item == **item) else {
-                continue;
-            };
-            let Some(at) = is::hotbar_slot(batch.width, batch.height, *slot, right_handed) else {
-                continue;
-            };
-            let paint = is::paint(config.style, rgb(self, &config, stack), at, pulse, false);
-            fill(self, batch, &paint.behind);
-            fill(self, batch, &paint.front);
-        }
-    }
-
-    /// `item_draw::Game::draw_item_model`'s HEAD: an item drawn in a screen
-    /// at the place of a marked player slot gets its mark (under and over
-    /// the item); true when it was drawn here. Pointing at it clears it.
+    /// `item_draw::Game::draw_item_model`'s HEAD: an item drawn at the
+    /// place of a marked slot, on the HUD's hotbar or in a screen, gets its
+    /// mark under and over it (the game then draws its count on top); true
+    /// when it was drawn here. Pointing at it in a screen clears it.
     pub(super) fn itemnew_draw_item(
         &self,
         batch: &mut HudBatch,
@@ -197,18 +167,75 @@ impl Game<'_> {
         if DRAWING.get() || !on(self) {
             return false;
         }
-        let Some(kind) = screen_kind(self) else {
-            return false;
-        };
         let marks = shared(|s| s.tracker.marks());
         if !marks.iter().any(|(_, item)| *item == *stack.item) {
             return false;
         }
         let config = config(self);
+        let at = [x, y];
+        let marked = match self.itemnew_hotbar(batch, stack, at) {
+            Some(slot) => {
+                config.shows(ScreenKind::Hotbar)
+                    && marks
+                        .iter()
+                        .any(|(s, item)| *s == slot && *item == *stack.item)
+            }
+            None => self.itemnew_screen_slot(batch, stack, at, &marks, &config),
+        };
+        if !marked {
+            return false;
+        }
+        let paint = is::paint(
+            config.style,
+            rgb(self, &config, stack),
+            at,
+            pulse(self, &config),
+        );
+        fill(self, batch, &paint.behind);
+        struct Drawing;
+        impl Drop for Drawing {
+            fn drop(&mut self) {
+                DRAWING.set(false);
+            }
+        }
+        DRAWING.set(true);
+        {
+            let _drawing = Drawing;
+            self.draw_item_model(batch, stack, x, y);
+        }
+        fill(self, batch, &paint.front);
+        true
+    }
+
+    /// The hotbar slot (or the off hand) when `stack` is the HUD drawing
+    /// that slot's own stack at its place.
+    fn itemnew_hotbar(&self, batch: &HudBatch, stack: &ItemStack, at: [f32; 2]) -> Option<usize> {
+        if self.player.is_none() || self.spectator() {
+            return None;
+        }
+        let right_handed = !self.settings.main_hand_left;
+        let slot = is::hotbar_at(batch.width, batch.height, at, right_handed)?;
+        tracked(self, slot)
+            .is_some_and(|s| std::ptr::eq(s, stack))
+            .then_some(slot)
+    }
+
+    /// Whether `stack`, drawn at `at` in the open screen, is a marked
+    /// player slot's that keeps its mark (pointing at it clears it).
+    fn itemnew_screen_slot(
+        &self,
+        batch: &HudBatch,
+        stack: &ItemStack,
+        at: [f32; 2],
+        marks: &[(usize, String)],
+        config: &Config,
+    ) -> bool {
+        let Some(kind) = screen_kind(self) else {
+            return false;
+        };
         if !config.shows(kind) {
             return false;
         }
-        let at = [x, y];
         // The stack on the cursor is drawn at the pointer, not in a slot.
         let pointer = [self.cursor.0 - 8.0, self.cursor.1 - 8.0];
         if self.carried.is_some() && is::same_place(at, pointer) {
@@ -229,36 +256,13 @@ impl Game<'_> {
         };
         let hovered = is::inside(self.cursor, at);
         let cleared = shared(|s| {
-            if hovered && s.tracker.hover(slot, &config) {
+            if hovered && s.tracker.hover(slot, config) {
                 return true;
             }
             s.tracker.saw(slot);
             false
         });
-        if cleared {
-            return false;
-        }
-        let paint = is::paint(
-            config.style,
-            rgb(self, &config, stack),
-            at,
-            pulse(self, &config),
-            true,
-        );
-        fill(self, batch, &paint.behind);
-        struct Drawing;
-        impl Drop for Drawing {
-            fn drop(&mut self) {
-                DRAWING.set(false);
-            }
-        }
-        DRAWING.set(true);
-        {
-            let _drawing = Drawing;
-            self.draw_item_model(batch, stack, x, y);
-        }
-        fill(self, batch, &paint.front);
-        true
+        !cleared
     }
 
     /// `native_command` (a hook point): `/itemnew [status|clear|reload]`,

@@ -13,7 +13,7 @@ use std::collections::HashMap;
 /// The mod's id: its row in Options > Mods and its settings folder
 /// (`horizon-mods/.horizon-mod-data/itemnew/`).
 pub const ID: &str = "itemnew";
-pub const VERSION: &str = "0.1.0";
+pub const VERSION: &str = "0.1.1";
 pub const NAME: &str = "Item New";
 pub const DESCRIPTION: &str = "Marks items newly added to your inventory, in the hotbar and inventory screens, until you have seen them.";
 /// The configuration, in the mod's settings folder: what the settings page writes.
@@ -429,27 +429,19 @@ fn star(c: [f32; 2], arm: f32, rgb: u32, out: &mut Vec<Fill>) {
 }
 
 /// The fills of a mark of `style` in `rgb` on the slot at `at` (its top
-/// left corner), at pulse `pulse`. `under_item` is false where the item is
-/// already drawn (the HUD's hotbar): the glow's soft centre is then left out
-/// so the item is not tinted.
-pub fn paint(style: Style, rgb: u32, at: [f32; 2], pulse: f32, under_item: bool) -> Paint {
+/// left corner), at pulse `pulse`: `behind` goes under the item, `front`
+/// over it and under its count, in screens and on the hotbar alike.
+pub fn paint(style: Style, rgb: u32, at: [f32; 2], pulse: f32) -> Paint {
     let mut paint = Paint::default();
     let pulse = pulse.clamp(0.0, 1.0);
     let [x, y] = at;
     if matches!(style, Style::Glow | Style::GlowStar) {
         let strength = 0.55 + 0.45 * pulse;
-        if under_item {
-            paint.behind.push(Fill {
-                rect: [x + 1.0, y + 1.0, CELL - 2.0, CELL - 2.0],
-                argb: argb(96.0 * strength, rgb),
-            });
-        }
-        let rings: &[f32] = if under_item {
-            &[176.0, 104.0, 48.0]
-        } else {
-            &[176.0, 96.0]
-        };
-        for (inset, alpha) in rings.iter().enumerate() {
+        paint.behind.push(Fill {
+            rect: [x + 1.0, y + 1.0, CELL - 2.0, CELL - 2.0],
+            argb: argb(96.0 * strength, rgb),
+        });
+        for (inset, alpha) in [176.0, 104.0, 48.0].iter().enumerate() {
             ring(
                 at,
                 inset as f32,
@@ -503,6 +495,14 @@ pub fn hotbar_slot(width: f32, height: f32, slot: usize, right_handed: bool) -> 
         _ => return None,
     };
     Some([x as f32, (h - 16 - 3) as f32])
+}
+
+/// The hotbar slot (0..9) or the off hand ([`OFFHAND`]) whose item the
+/// HUD draws at `at`, if any (see [`hotbar_slot`]).
+pub fn hotbar_at(width: f32, height: f32, at: [f32; 2], right_handed: bool) -> Option<usize> {
+    (0..9).chain([OFFHAND]).find(|&slot| {
+        hotbar_slot(width, height, slot, right_handed).is_some_and(|s| same_place(s, at))
+    })
 }
 
 /// Whether the pointer at `cursor` is over the slot drawn at `at`.
@@ -1191,12 +1191,10 @@ mod tests {
         let at = [100.0, 50.0];
         for style in [Style::Glow, Style::Frame, Style::Star, Style::GlowStar] {
             for pulse in [0.0, 0.3, 0.7, 1.0] {
-                for under in [true, false] {
-                    let p = paint(style, 0xFFC830, at, pulse, under);
-                    assert!(!p.front.is_empty(), "{style:?}");
-                    assert!(within_cell(&p.behind, at), "{style:?}");
-                    assert!(within_cell(&p.front, at), "{style:?}");
-                }
+                let p = paint(style, 0xFFC830, at, pulse);
+                assert!(!p.front.is_empty(), "{style:?}");
+                assert!(within_cell(&p.behind, at), "{style:?}");
+                assert!(within_cell(&p.front, at), "{style:?}");
             }
         }
     }
@@ -1204,25 +1202,23 @@ mod tests {
     #[test]
     fn the_glow_tints_the_item_only_from_behind() {
         let at = [0.0, 0.0];
-        let screen = paint(Style::Glow, 0xFFFFFF, at, 1.0, true);
-        assert_eq!(screen.behind.len(), 1);
-        assert_eq!(screen.front.len(), 12);
-        let hud = paint(Style::Glow, 0xFFFFFF, at, 1.0, false);
-        assert!(hud.behind.is_empty());
-        assert_eq!(hud.front.len(), 8);
-        // The rings only cover the slot's edge, never its middle.
-        for f in &hud.front {
+        let glow = paint(Style::Glow, 0xFFFFFF, at, 1.0);
+        assert_eq!(glow.behind.len(), 1);
+        assert_eq!(glow.front.len(), 12);
+        // The rings over the item are one pixel lines along the slot's
+        // edge, never across its middle.
+        for f in &glow.front {
             let [x, y, w, h] = f.rect;
             assert!(w == 1.0 || h == 1.0);
-            assert!(x <= 1.0 || y <= 1.0 || x + w >= 15.0 || y + h >= 15.0);
+            assert!(x <= 2.0 || y <= 2.0 || x + w >= 14.0 || y + h >= 14.0);
         }
-        assert!(paint(Style::Frame, 0, at, 1.0, true).behind.is_empty());
+        assert!(paint(Style::Frame, 0, at, 1.0).behind.is_empty());
     }
 
     #[test]
     fn colours_and_pulse() {
-        let dim = paint(Style::Frame, 0x123456, [0.0, 0.0], 0.0, true);
-        let bright = paint(Style::Frame, 0x123456, [0.0, 0.0], 1.0, true);
+        let dim = paint(Style::Frame, 0x123456, [0.0, 0.0], 0.0);
+        let bright = paint(Style::Frame, 0x123456, [0.0, 0.0], 1.0);
         assert_eq!(bright.front[0].argb, 0xFF12_3456);
         assert!(dim.front[0].argb >> 24 < bright.front[0].argb >> 24);
         assert_eq!(dim.front[0].argb & 0xFF_FFFF, 0x123456);
@@ -1240,8 +1236,8 @@ mod tests {
 
     #[test]
     fn the_star_twinkles() {
-        let big = paint(Style::Star, 0xFFC830, [0.0, 0.0], 1.0, true);
-        let small = paint(Style::Star, 0xFFC830, [0.0, 0.0], 0.0, true);
+        let big = paint(Style::Star, 0xFFC830, [0.0, 0.0], 1.0);
+        let small = paint(Style::Star, 0xFFC830, [0.0, 0.0], 0.0);
         let width = |p: &Paint| p.front.iter().map(|f| f.rect[2]).fold(0.0, f32::max);
         assert_eq!(width(&big), 5.0);
         assert_eq!(width(&small), 3.0);
@@ -1263,6 +1259,21 @@ mod tests {
             Some([314.0, 221.0])
         );
         assert_eq!(hotbar_slot(427.0, 240.0, 9, true), None);
+    }
+
+    #[test]
+    fn hotbar_items_are_known_by_their_place() {
+        for right_handed in [true, false] {
+            for slot in (0..9).chain([OFFHAND]) {
+                let at = hotbar_slot(427.0, 240.0, slot, right_handed).unwrap();
+                assert_eq!(hotbar_at(427.0, 240.0, at, right_handed), Some(slot));
+            }
+        }
+        // A screen's slot, or the hotbar a row up, is not the HUD's hotbar.
+        assert_eq!(hotbar_at(427.0, 240.0, [125.0, 201.0], true), None);
+        assert_eq!(hotbar_at(427.0, 240.0, [126.0, 221.0], true), None);
+        // The off hand's place changes with the main hand.
+        assert_eq!(hotbar_at(427.0, 240.0, [96.0, 221.0], false), None);
     }
 
     #[test]
